@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Exit automatically if any error escapes our capturing
+# Also, print commands.  Since run-crons swallows output, good for debugging
+set -e -x
+
+#Source the settings
+. /etc/emerge-sync.conf
+
+#Decide if we are going to start knowing we have to send mail or not
+if [ "$MAILFAILUREONLY" = "true" ]; then
+	DOMAIL="false"
+else
+	DOMAIL="true"
+fi
+
+rm -f "${TMPFILE}"
+
+# For verbose text
+vecho () { 
+	if [ "$VERBOSE" = "true" ]; then
+		echo "`date '+%x %X'`"  "$1" >> "${TMPFILE}"
+	fi
+	}
+
+# Captures output and appends it in the right place
+run () { 
+	printf "`date '+%n %x %X'` +$@ \n" >> "${TMPFILE}"
+	$@ >> "${TMPFILE}" 2>&1 || 
+	( 
+		#Handle command failure
+		echo "`date '+%n %x %X'` $@ failed with return status $?" >> "${TMPFILE}"
+		DOMAIL="true"
+	) 
+}
+
+vecho "start to updates"
+
+vecho "sync to gentoo repositories"
+run emerge --sync -q
+
+vecho "GLSAs first"
+run emerge -uDN @glsa
+
+vecho "start update to all packages"
+run emerge -uDN @world
+
+#We check this each time.  It doesnt take much time and covers a whole multitude of possibilites
+vecho "Rebuild modules"
+run emerge -uDN @module-rebuild
+
+if [ `which python-updater` -a -x `which python-updater` ]; then
+	vecho "Rebuild python packages which require it"
+	run python-updater
+else
+	vecho "python-updater not installed, not rebuilding python packages which require it.  Emerge python-updater to run"
+fi
+
+if [ `which perl-cleaner` -a -x `which perl-cleaner` ]; then
+	vecho "Rebuild perl modules which require it"
+	run perl-cleaner --all
+else
+	vecho "perl-cleaner not installed, not rebuilding modules that require rebuilding.  Emerge 'perl-cleaner' to run this step."
+fi
+
+vecho "rebuilding packages which require it"
+run revdep-rebuild
+
+vecho "The following packages are unused and could be removed."
+run emerge -pv --depclean
+
+vecho "Autoupdating config"
+run etc-update -p -v
+
+vecho "Finally, news:"
+run eselect news read new
+
+vecho "emerge-sync ran successfully"
+
+if [ "$DOMAIL" = "true" ]; then
+	cat "${TMPFILE}" | mail -s "${MAILSUBJECT}" "${MAILTARGET}"
+	#cat "${TMPFILE}"
+fi
+
+rm -f "${TMPFILE}"
