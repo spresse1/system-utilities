@@ -12,6 +12,4 @@ install: checkdeps
 	cp emerge-sync /etc/cron.daily/emerge-sync
 	chown root:root /etc/cron.daily/emerge-sync
 	chmod 0755 /etc/cron.daily/emerge-sync
-	cp emerge-sync.conf /etc
-	chown root:root /etc/emerge-sync.conf
-	chmod 0740 /etc/emerge-sync.conf
+	if [ ! -e /etc/emerge-sync.conf ]; then cp emerge-sync.conf /etc; chown root:root /etc/emerge-sync.conf; chmod 0740 /etc/emerge-sync.conf; else echo "/etc/emerge-sync.conf exists; not clobbering it"; fi
