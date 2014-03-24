@@ -17,11 +17,16 @@ fi
 rm -f "${TMPFILE}"
 
 # For verbose text
-vecho () { 
+vecho () {
 	if [ "$VERBOSE" = "true" ]; then
 		echo "`date '+%x %X'`"  "$1" >> "${TMPFILE}"
 	fi
 	}
+
+# for prepended (header) text
+hecho () {
+	echo "$@"|cat - "${TMPFILE}" > /tmp/out && mv /tmp/out "${TMPFILE}"
+}
 
 # Captures output and appends it in the right place
 run () { 
@@ -29,21 +34,73 @@ run () {
 	$@ >> "${TMPFILE}" 2>&1 || 
 	( 
 		#Handle command failure
+		STATUS=$?
 		echo "`date '+%n %x %X'` $@ failed with return status $?" >> "${TMPFILE}"
 		DOMAIL="true"
+		return $STATUS
 	) 
 }
+
+#This is a horrid hack, but this was written as a different script and this is the best way to run it in this environment.
+# Not really, I'm just too lazy to convert it after making it work once.
+KUPDATE='echo "Start kernel auto-update process"
+set -x #Echo commands
+die () { echo $@; exit 1; }
+
+cd /usr/src/linux #where we want to be
+make clean # clean up for sanity
+
+#Remove anything laying about
+rm .config
+
+#Copy in previous config TODO: use default if unable to copy?
+gzip -dc /proc/config.gz > .config || cp /usr/src/linux-`uname -r`/.config . || die "Could not copy old kernel config"
+
+#decide between genkernel and "manual"
+if [ `which genkernel` -a -x `which genkernel` ]; then
+	genkernel --oldconfig --kernel-config=.config all || die "Genkernel failed!"
+else
+	make modules_prepare || die "Modules_prepare failed with $?"
+	emerge @module-rebuild || die "Modules rebuild failed with $?"
+	make -j5 || die "Build failed with $?"
+	make modules_install || die "Module installation failed with $?"
+	# Will update symlinks so bootloader uses new kernel
+	make install || die "Install failed with $?" 
+fi
+' #end KUPDATE
 
 vecho "start to updates"
 
 vecho "sync to gentoo repositories"
 run emerge --sync -q
 
-vecho "GLSAs first"
-run emerge -uDN @glsa
+# Apparently not a thing anymore
+#vecho "GLSAs first"
+#run emerge -uDN @glsa
 
 vecho "start update to all packages"
 run emerge -uDN @world
+
+#If kernel checking/building enabled, do it here
+if [ "$CHECKKERNEL" -eq "true" ]; then
+	INSTALLEDRAW=`equery -q l -F '$name: $version' 'sys-kernel/*' | grep sources`
+	INSTALLEDPKG=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $1}'`
+	INSTALLEDVER=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $2}'`
+	RUNNINGVER=`uname -r | awk -F - '{print $1}'`
+	
+	if [ "${INSTALLEDVER}" -ne "${RUNNINGVER}" ]; then
+		if [ "$UPDATEKERNEL" -eq "true" ]; then
+			hecho "**AUTOUPDATING KERNEL**"
+			vecho "Start kernel auto-update process"
+
+			sh -c "${KUPDATE}" 2>&1 |tee "${TMPFILE}"
+
+			hecho "**KERNEL UPDATE PERFORMED, CONSIDER REBOOT**"
+		else
+			hecho "** KERNEL UPDATE AVAILABLE **"
+		fi
+	fi
+fi
 
 #We check this each time.  It doesnt take much time and covers a whole multitude of possibilites
 vecho "Rebuild modules"
