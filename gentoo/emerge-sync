@@ -30,7 +30,7 @@ hecho () {
 
 # Captures output and appends it in the right place
 run () { 
-	printf "`date '+%n %x %X'` +$@ \n" >> "${TMPFILE}"
+	echo "`date '+%n %x %X'` +$@" >> "${TMPFILE}"
 	$@ >> "${TMPFILE}" 2>&1 || 
 	( 
 		#Handle command failure
@@ -79,7 +79,7 @@ run emerge --sync -q
 #run emerge -uDN @glsa
 
 vecho "start update to all packages"
-run emerge -uDN @world
+run emerge -quDN @world
 
 #If kernel checking/building enabled, do it here
 if [ "$CHECKKERNEL" -eq "true" ]; then
@@ -104,7 +104,7 @@ fi
 
 #We check this each time.  It doesnt take much time and covers a whole multitude of possibilites
 vecho "Rebuild modules"
-run emerge -uDN @module-rebuild
+run emerge -quDN @module-rebuild
 
 if [ `which python-updater` -a -x `which python-updater` ]; then
 	vecho "Rebuild python packages which require it"
@@ -124,10 +124,10 @@ vecho "rebuilding packages which require it"
 run revdep-rebuild
 
 vecho "The following packages are unused and could be removed."
-run emerge -pv --depclean
+run emerge -qp --depclean
 
 vecho "Autoupdating config"
-run etc-update -p -v
+run etc-update -p
 
 vecho "Finally, news:"
 run eselect news read new
