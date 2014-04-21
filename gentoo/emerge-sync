@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash --login
 
 # Exit automatically if any error escapes our capturing
 # Also, print commands.  Since run-crons swallows output, good for debugging
@@ -23,63 +23,17 @@ vecho () {
 	fi
 	}
 
-# for prepended (header) text
-hecho () {
-	echo "$@"|cat - "${TMPFILE}" > /tmp/out && mv /tmp/out "${TMPFILE}"
-}
-
-# Captures output and appends it in the right place
-run () { 
-	echo "`date '+%n %x %X'` +$@" >> "${TMPFILE}"
-	$@ >> "${TMPFILE}" 2>&1 || 
-	( 
-		#Handle command failure
-		STATUS=$?
-		echo "`date '+%n %x %X'` $@ failed with return status $?" >> "${TMPFILE}"
-		DOMAIL="true"
-		return $STATUS
-	) 
-}
-
-#This is a horrid hack, but this was written as a different script and this is the best way to run it in this environment.
-# Not really, I'm just too lazy to convert it after making it work once.
-KUPDATE='echo "Start kernel auto-update process"
-set -x #Echo commands
-die () { echo $@; exit 1; }
-
-cd /usr/src/linux #where we want to be
-make clean # clean up for sanity
-
-#Remove anything laying about
-rm .config
-
-#Copy in previous config TODO: use default if unable to copy?
-gzip -dc /proc/config.gz > .config || cp /usr/src/linux-`uname -r`/.config . || die "Could not copy old kernel config"
-
-#decide between genkernel and "manual"
-if [ `which genkernel` -a -x `which genkernel` ]; then
-	genkernel --oldconfig --kernel-config=.config all || die "Genkernel failed!"
-else
-	make modules_prepare || die "Modules_prepare failed with $?"
-	emerge @module-rebuild || die "Modules rebuild failed with $?"
-	make -j5 || die "Build failed with $?"
-	make modules_install || die "Module installation failed with $?"
-	# Will update symlinks so bootloader uses new kernel
-	make install || die "Install failed with $?" 
-fi
-' #end KUPDATE
-
 vecho "start to updates"
 
 vecho "sync to gentoo repositories"
-run emerge --sync -q
+emerge --sync -q
 
 # Apparently not a thing anymore
 #vecho "GLSAs first"
-#run emerge -uDN @glsa
+#emerge -uDN @glsa
 
 vecho "start update to all packages"
-run emerge -quDN @world
+emerge -quDN @world
 
 #If kernel checking/building enabled, do it here
 if [ "$CHECKKERNEL" -eq "true" ]; then
@@ -90,53 +44,63 @@ if [ "$CHECKKERNEL" -eq "true" ]; then
 	
 	if [ "${INSTALLEDVER}" -ne "${RUNNINGVER}" ]; then
 		if [ "$UPDATEKERNEL" -eq "true" ]; then
-			hecho "**AUTOUPDATING KERNEL**"
-			vecho "Start kernel auto-update process"
+			echo "**AUTOUPDATING KERNEL**"
+			cd /usr/src/linux #where we want to be
+			make clean # clean up for sanity
 
-			sh -c "${KUPDATE}" 2>&1 |tee "${TMPFILE}"
+			#Remove anything laying about
+			rm .config
 
-			hecho "**KERNEL UPDATE PERFORMED, CONSIDER REBOOT**"
+			#Copy in previous config TODO: use default if unable to copy?
+			gzip -dc /proc/config.gz > .config || cp /usr/src/linux-`uname -r`/.config . || (echo "Could not copy old kernel config"; break)
+
+			#decide between genkernel and "manual"
+			if [ `which genkernel` -a -x `which genkernel` ]; then
+				genkernel --oldconfig --kernel-config=.config all || die "Genkernel failed!"
+			else
+				make modules_prepare || die "Modules_prepare failed with $?"
+				emerge @module-rebuild || die "Modules rebuild failed with $?"
+				make -j5 || die "Build failed with $?"
+				make modules_install || die "Module installation failed with $?"
+				# Will update symlinks so bootloader uses new kernel
+				make install || die "Install failed with $?" 
+			fi
+			echo "**KERNEL UPDATE PERFORMED, CONSIDER REBOOT**"
 		else
-			hecho "** KERNEL UPDATE AVAILABLE **"
+			echo "** KERNEL UPDATE AVAILABLE **"
 		fi
 	fi
 fi
 
 #We check this each time.  It doesnt take much time and covers a whole multitude of possibilites
 vecho "Rebuild modules"
-run emerge -quDN @module-rebuild
+emerge -quDN @module-rebuild
 
 if [ `which python-updater` -a -x `which python-updater` ]; then
 	vecho "Rebuild python packages which require it"
-	run python-updater
+	python-updater
 else
 	vecho "python-updater not installed, not rebuilding python packages which require it.  Emerge python-updater to run"
 fi
 
 if [ `which perl-cleaner` -a -x `which perl-cleaner` ]; then
 	vecho "Rebuild perl modules which require it"
-	run perl-cleaner --all
+	perl-cleaner --all
 else
 	vecho "perl-cleaner not installed, not rebuilding modules that require rebuilding.  Emerge 'perl-cleaner' to run this step."
 fi
 
 vecho "rebuilding packages which require it"
-run revdep-rebuild
+revdep-rebuild -q
 
 vecho "The following packages are unused and could be removed."
-run emerge -qp --depclean
+emerge -qp --depclean
 
 vecho "Autoupdating config"
-run etc-update -p
+etc-update -p -q
 
 vecho "Finally, news:"
-run eselect news read new
+eselect news read --quiet new
 
 vecho "emerge-sync ran successfully"
 
-if [ "$DOMAIL" = "true" ]; then
-	cat "${TMPFILE}" | mail -s "${MAILSUBJECT}" "${MAILTARGET}"
-	#cat "${TMPFILE}"
-fi
-
-rm -f "${TMPFILE}"
