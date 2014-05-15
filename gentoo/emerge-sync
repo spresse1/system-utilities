@@ -43,8 +43,8 @@ if [ "$CHECKKERNEL" = "true" ]; then
 	INSTALLEDVER=`eselect kernel show | head -n -1 | tail -n 1 |  cut -d/ -f 4- | cut -d- -f 2-`
 	RUNNINGVER=`uname -r | awk -F - '{print $1}'`
 	
-	if [ "${INSTALLEDVER}" -ne "${RUNNINGVER}" ]; then
-		if [ "$UPDATEKERNEL" -eq "true" ]; then
+	if [ "${INSTALLEDVER}" = "${RUNNINGVER}" ]; then
+		if [ "$UPDATEKERNEL" = "true" ]; then
 			echo "**AUTOUPDATING KERNEL**"
 			cd /usr/src/linux #where we want to be
 			make clean # clean up for sanity
