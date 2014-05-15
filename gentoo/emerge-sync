@@ -36,10 +36,11 @@ vecho "start update to all packages"
 emerge -quDN @world
 
 #If kernel checking/building enabled, do it here
-if [ "$CHECKKERNEL" -eq "true" ]; then
-	INSTALLEDRAW=`equery -q l -F '$name: $version' 'sys-kernel/*' | grep sources`
-	INSTALLEDPKG=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $1}'`
-	INSTALLEDVER=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $2}'`
+if [ "$CHECKKERNEL" = "true" ]; then
+	#INSTALLEDRAW=`equery -q l -F '$name: $version' 'sys-kernel/*' | grep sources`
+	#INSTALLEDPKG=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $1}'`
+	#INSTALLEDVER=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $2}'`
+	INSTALLEDVER=`eselect kernel show | head -n -1 | tail -n 1 |  cut -d/ -f 4- | cut -d- -f 2-`
 	RUNNINGVER=`uname -r | awk -F - '{print $1}'`
 	
 	if [ "${INSTALLEDVER}" -ne "${RUNNINGVER}" ]; then
