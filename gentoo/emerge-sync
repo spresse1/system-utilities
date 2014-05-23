@@ -25,6 +25,25 @@ vecho () {
 
 vecho "start to updates"
 
+KERNELHASSYMLINK=0
+
+if [ "$UPDATEKERNEL" = "true" ]
+then
+  for KERNEL in `equery l '*-sources*' | grep 'sys-kernel' | awk -F'[/-]' '{printf "%s-%s\n", $3, $4}' | sort | uniq`
+  do
+    if [ `equery --quiet u $KERNEL | grep '+symlink' | wc -l ` -eq 0 ]
+      then echo "WARNING: Kernel $KERNEL does not have symlink flag set"
+    else
+      KERNELHASSYMLINK=1
+    fi
+  done
+fi
+
+if [ $KERNELHASSYMLINK -eq 0 ]
+then
+  echo "WARNING: No kernel has the symlink use flag set!  This means we likely WILL NOT build the right kernel version.  Consider setting the symlink use flag or turning off kernel auto-update.  If you set the use flag, be sure to update the active kernel version via 'equery kernel set'."
+fi
+
 vecho "sync to gentoo repositories"
 emerge --sync -q
 
@@ -40,10 +59,19 @@ if [ "$CHECKKERNEL" = "true" ]; then
 	#INSTALLEDRAW=`equery -q l -F '$name: $version' 'sys-kernel/*' | grep sources`
 	#INSTALLEDPKG=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $1}'`
 	#INSTALLEDVER=`echo "${INSTALLEDRAW}" | grep sources | awk -F : '{print $2}'`
-	INSTALLEDVER=`eselect kernel show | head -n -1 | tail -n 1 |  cut -d/ -f 4- | cut -d- -f 2-`
+	#INSTALLEDVER=`eselect kernel show | head -n -1 | tail -n 1 |  cut -d/ -f 4- | cut -d- -f 2-`
+	
+	# We could have multiple versions of the kernel installed. And gentoo
+	# Doesn't have a consistant way to work from the name to the ebuild it
+	# came from.  So instead we'll just check if the running version is the
+	# latest for ANY installed kernel
+	INSTALLEDVERSIONS=`emerge --search '%@sys-kernel/.*-sources' | grep 'Latest version installed' | grep -v '\[ Not Installed \]' | sed -e 's/^ *//' -e 's/ *$//' | cut -f 4 -d ' '`
 	RUNNINGVER=`uname -r`
 	
-	if [ "${INSTALLEDVER}" != "${RUNNINGVER}" ]; then
+	#Greppoing the string that came back is better than dealing with bash
+	# arrays.  Looks for how many lines in the 'latest' list match the
+	# running kernel.  If none, we need to update.
+	if [ `echo "${INSTALLEDVERSIONS}" | grep "${RUNNINGVER}" | wc -l ` -eq 0 ]; then
 		if [ "$UPDATEKERNEL" = "true" ]; then
 			echo "**AUTOUPDATING KERNEL**"
 			cd /usr/src/linux #where we want to be
