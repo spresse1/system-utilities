@@ -23,6 +23,11 @@ vecho () {
 	fi
 	}
 
+die () {
+	echo $0
+	exit 1
+}
+
 vecho "start to updates"
 
 KERNELHASSYMLINK=0
@@ -44,8 +49,24 @@ then
   echo "WARNING: No kernel has the symlink use flag set!  This means we likely WILL NOT build the right kernel version.  Consider setting the symlink use flag or turning off kernel auto-update.  If you set the use flag, be sure to update the active kernel version via 'equery kernel set'."
 fi
 
+INSTALLEDVERSIONS=`emerge --search '%@sys-kernel/.*-sources' | grep 'Latest version installed' | grep -v '\[ Not Installed \]' | sed -e 's/^ *//' -e 's/ *$//' | cut -f 4 -d ' '`
+RUNNINGVER=`uname -r | cut -d'-' -f 1`
+
+if [ `echo "${INSTALLEDVERSIONS}" | grep "${RUNNINGVER}" | wc -l ` -eq 0 ]; then
+	echo "WARNING: Running kernel does not match installed kernel.  This likely results if you had a new kernel installed but have not yet built or rebooted"
+fi
+
+
 vecho "sync to gentoo repositories"
 emerge --sync -q
+
+#Check if theres even work to do.
+WORK=`emerge -qupDN @world`
+if [ `echo $WORK | wc -l` -eq 0 ]
+then
+	echo $WORK
+	echo "No work to do.  Exiting!"
+fi
 
 # Apparently not a thing anymore
 #vecho "GLSAs first"
@@ -87,6 +108,7 @@ if [ "$CHECKKERNEL" = "true" ]; then
 			if [ `which genkernel` -a -x `which genkernel` ]; then
 				genkernel --oldconfig --kernel-config=.config all || die "Genkernel failed!"
 			else
+				yes '' | make silentoldconfig || die "Could not automatically update configuration"
 				make modules_prepare || die "Modules_prepare failed with $?"
 				emerge @module-rebuild || die "Modules rebuild failed with $?"
 				make -j5 || die "Build failed with $?"
