@@ -62,10 +62,10 @@ emerge --sync -q
 
 #Check if theres even work to do.
 WORK=`emerge -qupDN @world`
-if [ `echo $WORK | wc -l` -eq 0 ]
+if [ `echo -n $WORK | wc -l` -eq 0 ]
 then
-	echo $WORK
 	echo "No work to do.  Exiting!"
+	exit 0
 fi
 
 # Apparently not a thing anymore
