@@ -62,7 +62,7 @@ emerge --sync -q
 
 #Check if theres even work to do.
 WORK=`emerge -qupDN @world`
-if [ `echo -n $WORK | wc -l` -eq 0 -a `echo "${INSTALLEDVERSIONS}" | grep "${RUNNINGVER}" | wc -l ` -ne 0 ]
+if [ `echo $WORK | wc -l` -eq 0 -a `echo "${INSTALLEDVERSIONS}" | grep "${RUNNINGVER}" | wc -l ` -ne 0 ]
 then
 	echo "No work to do.  Exiting!"
 	exit 0
