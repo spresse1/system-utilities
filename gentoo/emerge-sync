@@ -108,7 +108,7 @@ if [ "$CHECKKERNEL" = "true" ]; then
 			if [ `which genkernel` -a -x `which genkernel` ]; then
 				genkernel --oldconfig --kernel-config=.config all || die "Genkernel failed!"
 			else
-				yes '' | make silentoldconfig || die "Could not automatically update configuration"
+				make olddefconfig || die "Could not automatically update configuration"
 				make modules_prepare || die "Modules_prepare failed with $?"
 				emerge @module-rebuild || die "Modules rebuild failed with $?"
 				make -j5 || die "Build failed with $?"
