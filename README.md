@@ -11,3 +11,8 @@ In a larger environment, you might even consider setting up a nagios instance wh
 Currently there are update scripts for the following OSes.  See each one's folder and readme for details on the capabilities and features of each.
 
 - Gentoo Linux (emerge)
+- Debian Linux (apt)
+
+Note: In general sending mail will not work by default.  To do so, you'll need to enable sending mail in your crontab (typically by editing /etc/crontab and adding MAILTO=root).   However, if your mail leaves your network, many ISPs ban sending mail on their networks without passing it through a mail hub they control.  If you have only one machine, you're on your own.  However, in a more complex environament where you control DNS on your network, consider setting up postfix on a machine, then pointing mail.your.domain there.  Then, on each machine, install ssmtp.  Change the root= line in /etc/ssmtp/ssmtp.conf to be your address and voila, you get all mail destined for root.  (Note you may have to set rules to skip spam folders with your spam filtering).
+
+I'm sure there are other ways of doing this, and I'd appreciate hearing about any that are simpler.
