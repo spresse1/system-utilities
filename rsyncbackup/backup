@@ -1,0 +1,73 @@
+#!/bin/sh
+set -x
+
+. /etc/backup/backup.conf
+
+run_remote() {
+	ssh -i ${idfile} ${user}@${host} "$@"
+}
+
+rsync -avzP -e "ssh -i ${idfile}" --link-dest=../current \
+	--files-from=/etc/backup/dirs --exclude-from=/etc/backup/excludes \
+	/ ${user}@${host}:${backupdir}/${dailybackup}
+
+# Rsync is bad about exiting with error codes on (mostly) success
+# so dont do the error-bomb until after
+set -e
+
+run_remote "rm -f ${backupdir}/current && \
+	ln -s ${backupdir}/${dailybackup} ${backupdir}/current"
+
+#Next based on the date we're going to check if this is a weekly, monthly, 
+#yearly backup and create the appropriate hardlink if so.
+
+if [ $( \
+	run_remote "ls ${backupdir}/weekly" | grep ${weeklybackup} | \
+	wc -l ) -eq 0 ]
+then
+	run_remote "cp -al ${backupdir}/${dailybackup} \
+		${backupdir}/weekly/${weeklybackup}"
+fi
+if [ $( \
+	run_remote "ls ${backupdir}/monthly" | grep ${monthlybackup} | \
+	wc -l ) -eq 0 ]
+then
+	run_remote "cp -al ${backupdir}/${dailybackup} \
+		${backupdir}/monthly/${monthlybackup}"
+fi
+if [ $( \
+	run_remote "ls ${backupdir}/yearly" | grep ${yearlybackup} | \
+	wc -l ) -eq 0 ]
+then
+	run_remote "cp -al ${backupdir}/${dailybackup} \
+		${backupdir}/yearly/${yearlybackup}"
+fi
+
+if [ $dailykeep -ne -1 ]
+then
+	run_remote "rm -rf \$(
+		find ${backupdir} -maxdepth 1 \
+			-name \"${backupprefix}*\" | \
+		sort | head -n-$dailykeep)"
+fi
+if [ $weeklykeep -ne -1 ]
+then
+	run_remote "rm -rf \$(
+		find ${backupdir}/weekly -maxdepth 1 \
+			-name \"${backupprefix}*\" | \
+		sort | head -n-$weeklykeep)"
+fi
+if [ $monthlykeep -ne -1 ]
+then
+	run_remote "rm -rf \$(
+		find ${backupdir}/monthly -maxdepth 1 \
+			-name \"${backupprefix}*\" | \
+		sort | head -n-$monthlykeep)"
+fi
+if [ $yearlykeep -ne -1 ]
+then
+	run_remote "rm -rf \$(
+		find ${backupdir}/yearly -maxdepth 1 \
+			-name \"${backupprefix}*\" | \
+		sort | head -n-$yearlykeep)"
+fi
