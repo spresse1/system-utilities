@@ -10,6 +10,6 @@ install:
 	touch $(DESTDIR)$(sysconfdir)/backup/dirs
 	touch $(DESTDIR)$(sysconfdir)/backup/excludes
 	[ ! -e $(DESTDIR)$(sysconfdir)/backup/backup.conf ] && cp ./backup.conf $(DESTDIR)$(sysconfdir)/backup/
-	[ ! -e $(DESTDIR)$(sysconfdir)/cron.d/backup ] && cp ./backup.cron $(DESTDIR)$(sysconfdir)/cron.d/
+	[ ! -e $(DESTDIR)$(sysconfdir)/cron.d/backup ] && cp ./backup.cron $(DESTDIR)$(sysconfdir)/cron.d/backup
 	cp backup $(DESTDIR)$(sbindir)/
 	
