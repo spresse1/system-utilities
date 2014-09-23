@@ -62,6 +62,10 @@ to keep.  -1 indicates to never discard any backup of this type.
 (day) on both success or failure.  QUIET gives only error output.  
 VERBOSE turns on set -x and shows the commands being run.
 
+Next, on your target, create the appropriate user, install keys and make 
+sure directories exist.  Particularly, under backupdir, make sure you 
+have directories named weekly, monthly and yearly.
+
 Finally, it is recommended that you configure your cron manager to send 
 mail containing the output of cron jobs.  However, this is left as an 
 excercise to the reader.  (I'm not just being an academic ass, this 
@@ -75,5 +79,7 @@ Todo
 - Check that config sets all required variables (or handle gracefully)
 - Fix checking for cron.d; skip cron install and throw a warning if not 
 found.
+- Remove locked directory structure (weekly, monthly, yearly).  This can 
+be done via config
 - Maybe set this up with autotools, so moving things is simple?  It's 
 overkill, but I need the experience.
