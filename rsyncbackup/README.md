@@ -25,8 +25,8 @@ In particular:
 
 - Make sure a cron job for this is installed.  The primary 
 script is DESTDIR/sbindir/backup.
-- At the moment you'll need to adjust where configuration is loaded 
-from.  Edit the script itself for this.
+- Make sure you're passing an explicit path to configuration as the 
+first argument to the script
 
 Configuration
 -------------
@@ -72,9 +72,7 @@ gateways.)
 
 Todo
 ----
-- Add ability to set config location from the command line.  This is key 
-if DESTDIR is used to move the install to a different location and it is 
-expected to run from there.
+- Check that config sets all required variables (or handle gracefully)
 - Fix checking for cron.d; skip cron install and throw a warning if not 
 found.
 - Maybe set this up with autotools, so moving things is simple?  It's 

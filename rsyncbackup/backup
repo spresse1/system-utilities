@@ -1,16 +1,9 @@
 #!/bin/bash
 
-. /etc/backup/backup.conf
-
-if [ "$verbosity" == "VERBOSE" ]
-then
-	set -x
-fi
-
-if [ "$verbosity" == "QUIET" ]
-then
-	exec > /dev/null
-fi
+die () {
+	echo Fatal: $@
+	exit 1
+}
 
 run_remote() {
 	ssh -i ${idfile} ${user}@${host} "$@"
@@ -24,6 +17,25 @@ echo_remove() {
 		echo "$1: None to remove"
 	fi
 }
+
+if [ -n "$1" ]
+then
+	conf=$1
+else
+	conf=/etc/backup/backup.conf
+fi
+
+source "$conf" || die "Couldn't import config $conf"
+
+if [ "$verbosity" == "VERBOSE" ]
+then
+	set -x
+fi
+
+if [ "$verbosity" == "QUIET" ]
+then
+	exec > /dev/null
+fi
 
 echo "Starting rsync"
 rsync -avzP -e "ssh -i ${idfile}" --link-dest=../current \
