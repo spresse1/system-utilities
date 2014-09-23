@@ -55,7 +55,7 @@ run_remote "rm -f ${backupdir}/current && \
 
 echo "Checking which frequencies we need this backup to go into:"
 if [ $( \
-	run_remote "ls ${backupdir}/weekly" | grep ${weeklybackup} | \
+	run_remote "ls ${backupdir}/weekly" | grep "^${weeklybackup}$" | \
 	wc -l ) -eq 0 ]
 then
 	echo "Weekly"
@@ -63,7 +63,7 @@ then
 		${backupdir}/weekly/${weeklybackup}"
 fi
 if [ $( \
-	run_remote "ls ${backupdir}/monthly" | grep ${monthlybackup} | \
+	run_remote "ls ${backupdir}/monthly" | grep "^${monthlybackup}$" | \
 	wc -l ) -eq 0 ]
 then
 	echo "Monthly"
@@ -71,7 +71,7 @@ then
 		${backupdir}/monthly/${monthlybackup}"
 fi
 if [ $( \
-	run_remote "ls ${backupdir}/yearly" | grep ${yearlybackup} | \
+	run_remote "ls ${backupdir}/yearly" | grep "^${yearlybackup}$" | \
 	wc -l ) -eq 0 ]
 then
 	echo "Yearly"
