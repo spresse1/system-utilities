@@ -38,7 +38,7 @@ then
 fi
 
 echo "Starting rsync"
-rsync -avzP -e "ssh -i ${idfile}" --link-dest=../current \
+rsync -avzPr -e "ssh -i ${idfile}" --link-dest=../current \
 	--files-from=/etc/backup/dirs --exclude-from=/etc/backup/excludes \
 	/ ${user}@${host}:${backupdir}/${dailybackup}
 
