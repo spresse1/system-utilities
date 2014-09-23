@@ -1,2 +1,2 @@
 # Run system wide backup daily at 3am by default
-0 3 * * * root /usr/local/sbin/backup
+0 3 * * * root /sbin/backup
