@@ -1,34 +1,21 @@
-#!/bin/bash --login
-
-# Exit automatically if any error escapes our capturing
-# Also, print commands.  Since run-crons swallows output, good for debugging
-set -e -x
-
-#Source the settings
-. /etc/emerge-sync.conf
-
-#Decide if we are going to start knowing we have to send mail or not
-if [ "$MAILFAILUREONLY" = "true" ]; then
-	DOMAIL="false"
-else
-	DOMAIL="true"
-fi
-
-rm -f "${TMPFILE}"
-
-# For verbose text
-vecho () {
-	if [ "$VERBOSE" = "true" ]; then
-		echo "`date '+%x %X'`"  "$1" >> "${TMPFILE}"
-	fi
-	}
+#!/bin/bash
 
 die () {
 	echo $0
 	exit 1
 }
 
-vecho "start to updates"
+#Source the settings
+. /etc/emerge-sync.conf
+
+# Exit automatically if any error escapes our capturing
+# Also, print commands.  Since run-crons swallows output, good for debugging
+if [ "$VERBOSE" == "true" ]
+then
+	set -e -x
+fi
+
+echo "start to updates"
 
 KERNELHASSYMLINK=0
 
@@ -42,38 +29,31 @@ then
       KERNELHASSYMLINK=1
     fi
   done
-fi
-
-if [ $KERNELHASSYMLINK -eq 0 ]
-then
-  echo "WARNING: No kernel has the symlink use flag set!  This means we likely WILL NOT build the right kernel version.  Consider setting the symlink use flag or turning off kernel auto-update.  If you set the use flag, be sure to update the active kernel version via 'equery kernel set'."
+  if [ $KERNELHASSYMLINK -eq 0 ]
+	then
+	  echo "WARNING: No kernel has the symlink use flag set!  This means we likely WILL NOT build the right kernel version.  Consider setting the symlink use flag or turning off kernel auto-update.  If you set the use flag, be sure to update the active kernel version via 'equery kernel set'."
+	fi
 fi
 
 INSTALLEDVERSIONS=`emerge --search '%@sys-kernel/.*-sources' | grep 'Latest version installed' | grep -v '\[ Not Installed \]' | sed -e 's/^ *//' -e 's/ *$//' | cut -f 4 -d ' '`
 RUNNINGVER=`uname -r | cut -d'-' -f 1`
 
+# This left out so yoou get nice warnings if theres akernel update, even if this script isnt managing it
 if [ `echo "${INSTALLEDVERSIONS}" | grep "${RUNNINGVER}" | wc -l ` -eq 0 ]; then
 	echo "WARNING: Running kernel does not match installed kernel.  This likely results if you had a new kernel installed but have not yet built or rebooted"
 fi
 
 
-vecho "sync to gentoo repositories"
+echo "sync to gentoo repositories"
 emerge --sync -q
 
 #Check if theres even work to do.
 WORK=`emerge -qupDN @world`
-if [ `echo $WORK | wc -l` -eq 0 -a `echo "${INSTALLEDVERSIONS}" | grep "${RUNNINGVER}" | wc -l ` -ne 0 ]
+if [ -n "$WORK" ]
 then
-	echo "No work to do.  Exiting!"
-	exit 0
+	echo "start update to all packages"
+	emerge -quDN @world
 fi
-
-# Apparently not a thing anymore
-#vecho "GLSAs first"
-#emerge -uDN @glsa
-
-vecho "start update to all packages"
-emerge -quDN @world
 
 #If kernel checking/building enabled, do it here
 if [ "$CHECKKERNEL" = "true" ]; then
@@ -89,7 +69,7 @@ if [ "$CHECKKERNEL" = "true" ]; then
 	INSTALLEDVERSIONS=`emerge --search '%@sys-kernel/.*-sources' | grep 'Latest version installed' | grep -v '\[ Not Installed \]' | sed -e 's/^ *//' -e 's/ *$//' | cut -f 4 -d ' '`
 	RUNNINGVER=`uname -r | cut -d'-' -f 1`
 	
-	#Greppoing the string that came back is better than dealing with bash
+	#Grepping the string that came back is better than dealing with bash
 	# arrays.  Looks for how many lines in the 'latest' list match the
 	# running kernel.  If none, we need to update.
 	if [ `echo "${INSTALLEDVERSIONS}" | grep "${RUNNINGVER}" | wc -l ` -eq 0 ]; then
@@ -116,6 +96,11 @@ if [ "$CHECKKERNEL" = "true" ]; then
 				# Will update symlinks so bootloader uses new kernel
 				make install || die "Install failed with $?" 
 			fi
+			
+			#We check this each time.  It doesnt take much time and covers a 
+			#whole multitude of possibilites
+			echo "Rebuild modules"
+			emerge -quDN @module-rebuild
 			echo "**KERNEL UPDATE PERFORMED, CONSIDER REBOOT**"
 		else
 			echo "** KERNEL UPDATE AVAILABLE **"
@@ -123,35 +108,38 @@ if [ "$CHECKKERNEL" = "true" ]; then
 	fi
 fi
 
-#We check this each time.  It doesnt take much time and covers a whole multitude of possibilites
-vecho "Rebuild modules"
-emerge -quDN @module-rebuild
+if [ -n "$WORK" ]
+then
+	if [ `which python-updater` -a -x `which python-updater` ]; then
+		echo "Rebuild python packages which require it"
+		python-updater
+	else
+		echo "python-updater not installed, not rebuilding python packages which require it.  Emerge python-updater to run"
+	fi
 
-if [ `which python-updater` -a -x `which python-updater` ]; then
-	vecho "Rebuild python packages which require it"
-	python-updater
-else
-	vecho "python-updater not installed, not rebuilding python packages which require it.  Emerge python-updater to run"
+	if [ `which perl-cleaner` -a -x `which perl-cleaner` ]; then
+		echo "Rebuild perl modules which require it"
+		perl-cleaner --all
+	else
+		echo "perl-cleaner not installed, not rebuilding modules that require rebuilding.  Emerge 'perl-cleaner' to run this step."
+	fi
+
+	echo "rebuilding packages which require it"
+	revdep-rebuild -q
+
+	echo "The following packages are unused and could be removed."
+	emerge -qp --depclean
+
+	echo "Autoupdating config"
+	if [ -n "$(which etc-update)" ]
+	then
+		etc-update -p -q
+	else
+		echo "emerge etc-update to allow (some) auto-updating of config"
+	fi
 fi
 
-if [ `which perl-cleaner` -a -x `which perl-cleaner` ]; then
-	vecho "Rebuild perl modules which require it"
-	perl-cleaner --all
-else
-	vecho "perl-cleaner not installed, not rebuilding modules that require rebuilding.  Emerge 'perl-cleaner' to run this step."
-fi
-
-vecho "rebuilding packages which require it"
-revdep-rebuild -q
-
-vecho "The following packages are unused and could be removed."
-emerge -qp --depclean
-
-vecho "Autoupdating config"
-etc-update -p -q
-
-vecho "Finally, news:"
+echo "Finally, news:"
 eselect news read --quiet new
 
-vecho "emerge-sync ran successfully"
-
+echo "emerge-sync ran successfully"
