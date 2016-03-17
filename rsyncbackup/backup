@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 die () {
 	echo Fatal: $@
 	exit 1
@@ -52,8 +50,6 @@ then
 		then
 			exit 1
 		fi
-	else
-		exit 1
 	fi
 fi
 
