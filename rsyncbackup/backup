@@ -40,12 +40,13 @@ fi
 if [ -n "$check_mounted" ]
 then
 	RMOUNT=$( run_remote cat /proc/mounts | awk '{print $1}' | \
-		grep $check_mounted )
+		grep "$check_mounted" )
 	if [ -z "$RMOUNT" -a "$attempt_mount" == "YES" ]
 	then
 		run_remote mount -a
+		run_remote mount "$check_mounted"
 		RMOUNT=$( run_remote cat /proc/mounts | awk '{print $1}' | \
-			grep $check_mounted )
+			grep "$check_mounted" )
 		if [ -z "$RMOUNT" ]
 		then
 			exit 1
@@ -129,3 +130,7 @@ then
 	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
 fi
 
+if [ "$attempt_unmount" == "YES" ]
+then
+	run_remote umount "$check_mounted"
+fi
