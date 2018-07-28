@@ -102,32 +102,44 @@ then
 	REMOVE=$( run_remote "find ${backupdir} -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$dailykeep" )
-	echo_remove "Daily" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in $REMOVE
+	do
+		echo_remove "Daily" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 if [ $weeklykeep -ne -1 ]
 then
 	REMOVE=$( run_remote "find ${backupdir}/weekly -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$weeklykeep" )
-	echo_remove "Weekly" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in $REMOVE
+	do
+		echo_remove "Weekly" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 if [ $monthlykeep -ne -1 ]
 then
 	REMOVE=$( run_remote "find ${backupdir}/monthly -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$monthlykeep" )
-	echo_remove "Monthly" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in$REMOVE
+	do
+		echo_remove "Monthly" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 if [ $yearlykeep -ne -1 ]
 then
 	REMOVE=$( run_remote "find ${backupdir}/yearly -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$yearlykeep" )
-	echo_remove "Yearly" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in $REMOVE
+	do
+		echo_remove "Yearly" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 
 if [ "$attempt_unmount" == "YES" ]
