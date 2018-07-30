@@ -124,7 +124,7 @@ then
 	REMOVE=$( run_remote "find ${backupdir}/monthly -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$monthlykeep" )
-	for RBACK in$REMOVE
+	for RBACK in $REMOVE
 	do
 		echo_remove "Monthly" $RBACK
 		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
