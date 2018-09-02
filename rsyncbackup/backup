@@ -37,6 +37,23 @@ then
 	exec > /dev/null
 fi
 
+if [ -n "$check_mounted" ]
+then
+	RMOUNT=$( run_remote cat /proc/mounts | awk '{print $1}' | \
+		grep "$check_mounted" )
+	if [ -z "$RMOUNT" -a "$attempt_mount" == "YES" ]
+	then
+		run_remote mount -a
+		run_remote mount "$check_mounted"
+		RMOUNT=$( run_remote cat /proc/mounts | awk '{print $1}' | \
+			grep "$check_mounted" )
+		if [ -z "$RMOUNT" ]
+		then
+			exit 1
+		fi
+	fi
+fi
+
 echo "Starting rsync"
 rsync -avzPr -e "ssh -i ${idfile}" --link-dest=../current \
 	--files-from=/etc/backup/dirs --exclude-from=/etc/backup/excludes \
@@ -85,31 +102,47 @@ then
 	REMOVE=$( run_remote "find ${backupdir} -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$dailykeep" )
-	echo_remove "Daily" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in $REMOVE
+	do
+		echo_remove "Daily" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 if [ $weeklykeep -ne -1 ]
 then
 	REMOVE=$( run_remote "find ${backupdir}/weekly -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$weeklykeep" )
-	echo_remove "Weekly" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in $REMOVE
+	do
+		echo_remove "Weekly" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 if [ $monthlykeep -ne -1 ]
 then
 	REMOVE=$( run_remote "find ${backupdir}/monthly -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$monthlykeep" )
-	echo_remove "Monthly" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in$REMOVE
+	do
+		echo_remove "Monthly" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 if [ $yearlykeep -ne -1 ]
 then
 	REMOVE=$( run_remote "find ${backupdir}/yearly -maxdepth 1 \
 			-name \"${backupprefix}*\" | \
 		sort | head -n-$yearlykeep" )
-	echo_remove "Yearly" $REMOVE
-	[ -n "${REMOVE}" ] && run_remote "rm -rf ${REMOVE}"
+	for RBACK in $REMOVE
+	do
+		echo_remove "Yearly" $RBACK
+		[ -n "${RBACK}" ] && run_remote "rm -rf ${RBACK}"
+	done
 fi
 
+if [ "$attempt_unmount" == "YES" ]
+then
+	run_remote umount "$check_mounted"
+fi

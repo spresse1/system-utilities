@@ -48,11 +48,11 @@ echo "sync to gentoo repositories"
 emerge --sync -q
 
 #Check if theres even work to do.
-WORK=`emerge -qupDN @world`
+WORK=`emerge -qupDN --autounmask-write @world`
 if [ -n "$WORK" ]
 then
 	echo "start update to all packages"
-	emerge -quDN @world
+	emerge -quDN --autounmask-write @world
 fi
 
 #If kernel checking/building enabled, do it here
