@@ -101,6 +101,16 @@ if [ "$CHECKKERNEL" = "true" ]; then
 			#whole multitude of possibilites
 			echo "Rebuild modules"
 			emerge -quDN @module-rebuild
+			echo "Update bootloader"
+			if [ -n "$(which grub2-mkconfig)" ]
+			then
+				grub2-mkconfig -o /boot/grub/grub.cfg
+			elif [ -n "$(which grub-mkconfig)" ]
+			then
+				grub-mkconfig -o /boot/grub/grub.cfg
+			else
+				echo "Update not performed; please do manually"
+			fi
 			echo "**KERNEL UPDATE PERFORMED, CONSIDER REBOOT**"
 		else
 			echo "** KERNEL UPDATE AVAILABLE **"
