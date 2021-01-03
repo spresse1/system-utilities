@@ -120,6 +120,10 @@ fi
 
 if [ -n "$WORK" ]
 then
+	# Change to the latest python
+	eselect python update
+	eselect python cleanup
+
 	if [ `which python-updater` -a -x `which python-updater` ]; then
 		echo "Rebuild python packages which require it"
 		python-updater
